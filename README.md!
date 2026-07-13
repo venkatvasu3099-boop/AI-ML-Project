@@ -1,0 +1,44 @@
+# Data Preparation and EDA Project
+
+## Dataset Description
+[Provide a brief 1-2 sentence description of what your raw dataset contains.]
+
+## Task 2: Imputation Justification
+Numeric columns with a missing rate under 20% were imputed using the **median** rather than the mean. The median is robust to outliers, meaning that if the column contains extreme values, the imputed value will not be heavily skewed, preserving the central tendency of the data more reliably than the mean.
+
+## Task 5: Skewness Interpretation
+The column with the highest absolute skewness is **[Insert Column Name]**.
+*   **Interpretation:** [If positive: A positive skew means the tail on the right side of the distribution is longer or fatter. The mass of the distribution is concentrated on the left. If negative: A negative skew means the tail on the left side is longer, concentrating data on the right.]
+*   **Consequence for Mean Imputation:** Because extreme values pull the mean toward the long tail, imputing missing values with the mean in this highly skewed column would artificially shift the central tendency away from where most data points lie.
+
+## Task 6: Outlier Handling Strategy
+Outliers were identified using the IQR method for **[Column 1]** and **[Column 2]**.
+*   **Strategy:** I have chosen to [retain / cap / drop] these outliers for Part 2. 
+*   **Justification:** [E.g., I retained them because they represent true natural variance in the dataset / I capped them because they appear to be data entry errors that will disrupt predictive modeling.]
+
+## Task 7: Visualization Insights
+*   **Histogram Shape:** The histogram of **[Highest Skew Column]** shows a [right-skewed / left-skewed] distribution with a heavy tail.
+*   **Scatter Plot Analysis:** The scatter plot between **[Col A]** and **[Col B]** shows a [positive/negative], [strong/moderate/weak] relationship.
+*   **Box Plot Analysis:** The box plot splitting **[Numeric Col]** by **[Categorical Col]** reveals that the median is higher for the [Category Name] group, and variance (spread) is widest in the [Category Name] group.
+
+## Task 8: Correlation & Alternative Explanations
+The highest absolute correlation was found between **[Variable A]** and **[Variable B]**.
+*   **Causal vs. Third Variable:** This correlation [does / does not necessarily] indicate a causal relationship. A plausible alternative explanation is a third variable, such as **[Insert Third Variable Context]**, which could be simultaneously causing both variables to increase/decrease.
+
+## Task 9a: Imputation Choice for Skewed Columns
+For the top two skewed columns, **[Col 1]** and **[Col 2]**:
+*   The mean was pulled [upward / downward] by extreme values.
+*   Therefore, the **median** was chosen for imputation as it provides a more representative central tendency.
+
+## Task 9b: Spearman vs. Pearson Correlation
+Top 3 pairs with the largest difference between Spearman and Pearson:
+1.  **[Pair 1]**: The relationship appears to be monotonic but non-linear (Spearman > Pearson). I will rely on **[Spearman]** for feature selection.
+2.  **[Pair 2]**: The relationship is approximately linear (Pearson >= Spearman). I will rely on **[Pearson]**.
+3.  **[Pair 3]**: [Add explanation based on your output].
+
+## Task 9c: Grouped Aggregation
+Grouping **[Numeric Col]** by **[Categorical Col]**:
+*   Group with highest mean: **[Group Name]**
+*   Group with highest standard deviation: **[Group Name]**
+*   **Variance Concern:** High within-group standard deviation [is / is not] a concern here because high variance implies the feature alone is insufficient to reliably predict the target for members of that group.
+*   **Mean Ratio:** The ratio of the highest to lowest group mean is **[Calculate Ratio]**. This ratio [is / is not] large enough to suggest the categorical feature carries predictive signal.
