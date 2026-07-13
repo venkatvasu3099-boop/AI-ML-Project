@@ -297,3 +297,201 @@ print(grouped_agg)
 print("\n--- Task 10: Saving Data ---")
 df.to_csv('cleaned_data.csv', index=False)
 print("Data saved successfully to 'cleaned_data.csv'")
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LinearRegression, Ridge, LogisticRegression
+from sklearn.metrics import (
+    mean_squared_error,
+    r2_score,
+    confusion_matrix,
+    classification_report,
+    roc_curve,
+    roc_auc_score,
+    precision_score,
+    recall_score,
+    f1_score
+)
+
+# ==========================================
+# Task 1: Load Data & Define Targets
+# ==========================================
+print("--- Task 1: Setup ---")
+df = pd.read_csv('cleaned_data.csv')
+
+# TODO: Define your target regression column here
+target_col = 'Income' # Replace with your actual continuous column
+
+# Define X (features) and y_reg (regression target)
+X = df.drop(columns=[target_col])
+y_reg = df[target_col]
+
+# Define y_clf (classification target) - Binarizing at the median
+y_clf = (y_reg > y_reg.median()).astype(int)
+
+# ==========================================
+# Task 2: Encode Categorical Columns
+# ==========================================
+print("\n--- Task 2: Encoding ---")
+# Example of Manual Ordinal Encoding (Uncomment and modify if you have ordinal data)
+# ordinal_mapping = {'Low': 1, 'Medium': 2, 'High': 3}
+# if 'Ordinal_Column' in X.columns:
+#     X['Ordinal_Column'] = X['Ordinal_Column'].map(ordinal_mapping)
+
+# One-hot encoding for nominal categories (dropping first to avoid multicollinearity)
+X = pd.get_dummies(X, drop_first=True)
+print("Features after encoding:", X.shape[1])
+
+# ==========================================
+# Task 3: Leak-free Train-Test Split & Scaling
+# ==========================================
+print("\n--- Task 3: Split & Scale ---")
+# Split the data (Note: we split both y_reg and y_clf simultaneously)
+X_train, X_test, y_reg_train, y_reg_test, y_clf_train, y_clf_test = train_test_split(
+    X, y_reg, y_clf, test_size=0.2, random_state=42
+)
+
+# Fit scaler strictly on training data
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test) # Transform test data using train parameters
+
+# ==========================================
+# Task 4: Regression Model - Linear Regression
+# ==========================================
+print("\n--- Task 4: Linear & Ridge Regression ---")
+# 1. OLS Linear Regression
+lr = LinearRegression()
+lr.fit(X_train_scaled, y_reg_train)
+y_pred_reg = lr.predict(X_test_scaled)
+
+mse_lr = mean_squared_error(y_reg_test, y_pred_reg)
+r2_lr = r2_score(y_reg_test, y_pred_reg)
+print(f"OLS Linear Regression - MSE: {mse_lr:.4f}, R2: {r2_lr:.4f}")
+
+# Coefficients
+coef_df = pd.DataFrame({'Feature': X.columns, 'Coefficient': lr.coef_})
+coef_df['Abs_Coef'] = coef_df['Coefficient'].abs()
+top_3_features = coef_df.nlargest(3, 'Abs_Coef')
+print("\nTop 3 Largest Coefficients (Absolute Value):")
+print(top_3_features[['Feature', 'Coefficient']])
+
+# 2. Ridge Regression
+ridge = Ridge(alpha=1.0)
+ridge.fit(X_train_scaled, y_reg_train)
+y_pred_ridge = ridge.predict(X_test_scaled)
+
+mse_ridge = mean_squared_error(y_reg_test, y_pred_ridge)
+r2_ridge = r2_score(y_reg_test, y_pred_ridge)
+print(f"\nRidge Regression - MSE: {mse_ridge:.4f}, R2: {r2_ridge:.4f}")
+
+# ==========================================
+# Task 5a: Classification Model - Logistic Reg
+# ==========================================
+print("\n--- Task 5a: Logistic Regression ---")
+# Check class imbalance
+class_distribution = y_clf_train.value_counts(normalize=True)
+print(f"Class distribution in training set:\n{class_distribution}")
+
+# Automatically apply class_weight if minority class < 35%
+class_weight_param = 'balanced' if class_distribution.min() < 0.35 else None
+if class_weight_param:
+    print("Class imbalance detected (minority < 35%). Using class_weight='balanced'.")
+
+log_reg = LogisticRegression(max_iter=1000, class_weight=class_weight_param)
+log_reg.fit(X_train_scaled, y_clf_train)
+
+y_pred_clf = log_reg.predict(X_test_scaled)
+y_prob_clf = log_reg.predict_proba(X_test_scaled)[:, 1]
+
+print("\nConfusion Matrix:")
+print(confusion_matrix(y_clf_test, y_pred_clf))
+print("\nClassification Report:")
+print(classification_report(y_clf_test, y_pred_clf))
+
+auc_log = roc_auc_score(y_clf_test, y_prob_clf)
+print(f"ROC AUC Score: {auc_log:.4f}")
+
+# Plot ROC Curve
+fpr, tpr, _ = roc_curve(y_clf_test, y_prob_clf)
+plt.figure(figsize=(8, 6))
+plt.plot(fpr, tpr, label=f'Logistic Regression (AUC = {auc_log:.2f})')
+plt.plot([0, 1], [0, 1], 'k--', label='Random Guess')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('ROC Curve')
+plt.legend()
+plt.show()
+
+# ==========================================
+# Task 5b: Decision-Threshold Sensitivity
+# ==========================================
+print("\n--- Task 5b: Decision Thresholds ---")
+thresholds = [0.30, 0.40, 0.50, 0.60, 0.70]
+results = []
+
+for t in thresholds:
+    t_preds = (y_prob_clf >= t).astype(int)
+    results.append({
+        'Threshold': t,
+        'Recall': recall_score(y_clf_test, t_preds),
+        'Precision': precision_score(y_clf_test, t_preds),
+        'F1': f1_score(y_clf_test, t_preds)
+    })
+
+threshold_df = pd.DataFrame(results)
+print(threshold_df.to_string(index=False))
+
+# ==========================================
+# Task 6: Regularization Experiment
+# ==========================================
+print("\n--- Task 6: Regularization Experiment (C=0.01) ---")
+log_reg_01 = LogisticRegression(C=0.01, max_iter=1000, class_weight=class_weight_param)
+log_reg_01.fit(X_train_scaled, y_clf_train)
+
+y_pred_01 = log_reg_01.predict(X_test_scaled)
+y_prob_01 = log_reg_01.predict_proba(X_test_scaled)[:, 1]
+
+auc_01 = roc_auc_score(y_clf_test, y_prob_01)
+print(f"C=1.0  -> Precision: {precision_score(y_clf_test, y_pred_clf):.4f}, Recall: {recall_score(y_clf_test, y_pred_clf):.4f}, AUC: {auc_log:.4f}")
+print(f"C=0.01 -> Precision: {precision_score(y_clf_test, y_pred_01):.4f}, Recall: {recall_score(y_clf_test, y_pred_01):.4f}, AUC: {auc_01:.4f}")
+
+# ==========================================
+# Task 7: Bootstrap Confidence Interval
+# ==========================================
+print("\n--- Task 7: Bootstrap Confidence Interval ---")
+n_bootstraps = 500
+auc_diffs = []
+rng = np.random.RandomState(42)
+
+for i in range(n_bootstraps):
+    # Sample row indices with replacement
+    indices = rng.choice(len(y_clf_test), size=len(y_clf_test), replace=True)
+
+    # Extract sampled truth and probabilities
+    y_true_b = y_clf_test.iloc[indices]
+    y_prob_1_b = y_prob_clf[indices]
+    y_prob_01_b = y_prob_01[indices]
+
+    # Skip iteration if the bootstrap sample contains only one class
+    if len(np.unique(y_true_b)) < 2:
+        continue
+
+    # Compute AUC for both models on this sample
+    auc_1_b = roc_auc_score(y_true_b, y_prob_1_b)
+    auc_01_b = roc_auc_score(y_true_b, y_prob_01_b)
+
+    # Append difference (C=1.0 minus C=0.01)
+    auc_diffs.append(auc_1_b - auc_01_b)
+
+mean_diff = np.mean(auc_diffs)
+ci_lower = np.percentile(auc_diffs, 2.5)
+ci_upper = np.percentile(auc_diffs, 97.5)
+
+print(f"Mean AUC Difference: {mean_diff:.4f}")
+print(f"95% Confidence Interval: [{ci_lower:.4f}, {ci_upper:.4f}]")
