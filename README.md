@@ -1,2 +1,2 @@
-# AI-ML-Project
+# AI-ML- Essentials Project
 Learning Git and GitHub
